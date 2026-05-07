@@ -1,0 +1,22 @@
+**Orderbook Note**
+
+- BUY/SELL orders for a specific asset/security **organized by time-price priority**  
+- E.g.  
+  - Say that a seller has many willing buyers at different prices/quantities  
+  - Seller wants to sell to the best deal for them, and then if the deal is equal, then the seller will sell in order of who got there first  
+- L1 (level 1\)  
+  - BBO \- Best bid offer (most somebody is willing to pay for the financial product)  
+  - Best ask \= lowest amount somebody is willing to sell the asset for  
+- L2 (level 2\)  
+  - MBP \= market by price  
+  - Adds more info to each buyer/seller  
+    - Count of willing buyers/sellers  
+    - Quantity of items each buyer will purchase/sell  
+      - Can also have count and quantity as a function of price (e.g. highest BBO will probably have less count and less quantity because less people are willing to buy at that price)  
+- L3 (level 3\)  
+  - MBO \- Market by Order  
+  - Queue priority algorithm (diff kinds of algos for this)  
+    - Time-price priority \= FIFO  
+    - Prorata  
+      - More units at same price \= better than somebody who is earlier at same price with less units  
+      - People get to the front of the line by willing to purchase/sell the most amount of things
