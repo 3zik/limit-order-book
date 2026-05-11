@@ -73,7 +73,7 @@ public:
     Quantity GetInitialQuantity() const { return initialQuantity_; }
     Quantity GetRemainingQuantity() const { return remainingQuantity_; }
     Quantity GetFilledQuantity() const { return GetInitialQuantity() - GetRemainingQuantity(); }
-
+    bool IsFilled() const { return GetRemainingQuantity() == 0; }
     void Fill(Quantity quantity){
       if (quantity > GetRemainingQuantity()) // safety checkj
         throw std::logic_error(std::format("Order ({}) cannot be filled for more than its remaining quantity.", GetOrderId()));
@@ -176,6 +176,95 @@ private:
 
   std::unordered_map<OrderId, OrderEntry> orders_;
 
+  // match method - e.g. non-f&Kill, add it to the orderbook,
+  // can match method - e.g. fillAndKill is never added if it cant be matched, its just discarded
+  
+  bool CanMatch(Side side, Price price){
+    if (side == Side::Buy){
+      if (asks_.empty())
+        return false;
+
+      const auto& [bestAsk, _] = *asks_.begin(); // best ask, the level with the lowest pric
+      // RHS is dereference the iterator, which is at .begin(), so the start of asks
+      // LHS is auto of a pair, [pricelvl, (quantity, but we dont care abt it)]
+      return price >= bestAsk;
+    }
+    else{
+      if (bids_.empty())
+        return false;
+      
+      const auto& [bestBid, _] = *bids.begin();
+      return price <= bestBid;
+    }
+  }
+
+  Trades MatchOrders(){
+    Trades trades;
+    // reserves memory in std::vecotr
+    trades.reserve(orders_.size());
+    
+    while(true){
+      if (bids_.empty() || asks_.empty()){
+        break; // just break if no bids or asks
+      } 
+      
+      auto& [bidPrice, bids] = *bids_.begin();
+      auto& [askPrice, asks] = *asks_.begin();
+
+      if(bidPrice < askPrice){
+        break;
+      }
+
+      while(bids.size() && ask.size()){
+        auto& bid = bids.front(); // TIME-PRICE PRIORIITY.  WE CHOOE the ONe that is there first (front of queue)
+        auto& ask = asks.front();
+
+        Quantity quantity = std::min(bid->GetRemainingQuantity(), ask->GetRemainingQuantity());
+
+        bid->Fill(quantity);
+        ask->Fill(quantity);
+
+        if (bid->IsFilled()){
+          bids.pop_front();
+          orders_erase(bid->GetOrderId());
+        }
+
+        if (ask->IsFilled){
+          asks.pop_front();
+          orders_.erase(ask->GetOrderId());
+        }
+
+        if(bids.empty()){
+          bids_.erase(bidPrice);
+        }
+        if(asks.empty()){
+          asks_.erase(askPrice);
+        }
+
+        trades.push_back(Trade {
+            TradeInfo { bid->GetOrderId(), bid->GetPrice(), quantity },
+            TradeInfo { ask->GetOrderId(), ask->GetPrice(), quantity }
+            });
+      }
+    }
+    
+
+    if (!bids.empty()){
+      auto& [_, bids] = *bids_.begin();
+      auto& order = bids.front();
+      if(order->GetOrderType() == OrderType::FillAndKill)
+        CancelOrder(order->GetOrderId());
+    }
+
+    if (!asks.empty()){
+      auto& [_, asks] = *asks_.begin();
+      auto& order = asks.front();
+      if (order->GetOrderType() == OrderType::FillAndKill)
+        CancelOrder(order->getOrderId());
+    }
+
+    return trades;
+  }
 };
 
 int main(){
