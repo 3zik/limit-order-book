@@ -1,22 +1,52 @@
-**Orderbook Note**
+# Order book notes
 
-- BUY/SELL orders for a specific asset/security **organized by time-price priority**  
-- E.g.  
-  - Say that a seller has many willing buyers at different prices/quantities  
-  - Seller wants to sell to the best deal for them, and then if the deal is equal, then the seller will sell in order of who got there first  
-- L1 (level 1\)  
-  - BBO \- Best bid offer (most somebody is willing to pay for the financial product)  
-  - Best ask \= lowest amount somebody is willing to sell the asset for  
-- L2 (level 2\)  
-  - MBP \= market by price  
-  - Adds more info to each buyer/seller  
-    - Count of willing buyers/sellers  
-    - Quantity of items each buyer will purchase/sell  
-      - Can also have count and quantity as a function of price (e.g. highest BBO will probably have less count and less quantity because less people are willing to buy at that price)  
-- L3 (level 3\)  
-  - MBO \- Market by Order  
-  - Queue priority algorithm (diff kinds of algos for this)  
-    - Time-price priority \= FIFO  
-    - Prorata  
-      - More units at same price \= better than somebody who is earlier at same price with less units  
-      - People get to the front of the line by willing to purchase/sell the most amount of things
+Conceptual background for how exchanges organize orders, plus how **this repository** maps to those ideas.
+
+## Price–time priority (L3 / MBO)
+
+- Buy and sell interest for an instrument is organized by **price**, then **time** at each price.
+- Example: many buyers at different prices. A seller matches against the **best bid** first; at the same price, earlier orders are ahead of later ones (**FIFO**).
+- **This project:** FIFO at each price is implemented with `std::list` per price level; `std::map` orders prices so the best bid/ask are at `begin()`.
+
+## Market depth levels (terminology)
+
+### L1
+
+- **BBO** — best bid and best offer (highest bid, lowest ask).
+
+### L2 (market by price, MBP)
+
+- Per price: typically **total displayed quantity** (and sometimes order count).
+- **This project:** `GetOrderInfos()` returns aggregated **remaining quantity** per price on each side (`LevelInfo` / `OrderbookLevelInfos`). It does not expose per-order IDs (that would be closer to L3).
+
+### L3 (market by order, MBO)
+
+- Individual order queue and priority rules.
+- **Queue styles (general industry):**
+  - **Time–price priority (FIFO)** at a price — what this code implements.
+  - **Pro-rata** — size-weighted allocation at a price; **not** implemented here.
+
+## Order and TIF types
+
+### Limit
+
+- Execute at this price **or better**; unfilled quantity can rest in the book.
+- **This project:** standard GTC path after optional FOK/FAK checks.
+
+### Market (typical intent vs this code)
+
+- Colloquial: “take liquidity now at the best available prices,” often walking the book.
+- **This project:** if the opposite side exists, the order becomes **GTC at the worst price on that opposite book** (`rbegin()`), then participates in normal matching. It is **not** a multi-level aggressive sweep; treat it as a simplified stand-in.
+
+### Time in force (TIF)
+
+- **Good-Till-Cancel (GTC)** — rests until filled or canceled.
+- **Day / GFD** — cancel if not done by end of session or day.
+  - **This project:** GFD orders are canceled by a **background thread** that wakes on a timer derived from local wall clock (see `PruneGoodForDayOrders`); not exchange-calendar aware.
+- **Fill-and-Kill (FAK / IOC)** — fill what you can immediately; **cancel any remainder** (here: remainder at the inside price after matching is canceled).
+- **Fill-or-Kill (FOK)** — fill **entire** size immediately or **do not place** the order.
+- **AON (all-or-none, resting)** — like FOK in spirit but may **wait** in the book; **not** implemented (FOK here is reject-before-rest only).
+
+### Order types listed but not implemented here
+
+- **Stop** and **Stop-Limit** — trigger logic is not in this codebase; notes above are for general literacy only.
