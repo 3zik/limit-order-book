@@ -1,0 +1,21 @@
+orderbook
+
+# Object & build artifacts
+*.o
+*.obj
+*.a
+*.so
+*.exe
+
+# Debug
+*.dSYM/
+*.gch
+*.pch
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
