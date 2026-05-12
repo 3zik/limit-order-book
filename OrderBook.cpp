@@ -216,8 +216,8 @@ private:
       }
 
       while(bids.size() && ask.size()){
-        auto& bid = bids.front(); // TIME-PRICE PRIORIITY.  WE CHOOE the ONe that is there first (front of queue)
-        auto& ask = asks.front();
+        auto bid = bids.front(); // TIME-PRICE PRIORIITY.  WE CHOOE the ONe that is there first (front of queue)
+        auto ask = asks.front();
 
         Quantity quantity = std::min(bid->GetRemainingQuantity(), ask->GetRemainingQuantity());
 
@@ -354,7 +354,16 @@ public:
 
 
 int main(){
-  
+  Orderbook orderbook;
+  const OrderId orderId = 1;
+
+  orderbook.AddOrder(std::make_shared<Order>(OrderType::GoodTillCancel, orderId, Side::Buy, 100, 10));
+
+  std::cout << orderbook.Size() << std::endl; // 1
+
+  orderbook.CancelOrder(orderId);
+
+  std::cout << orderbook.Size() << std::endl; //0
   return 0;
 }
 
